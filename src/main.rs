@@ -29,6 +29,7 @@ fn enable_options(flags: String, options: &mut Vec<bool>) -> () {
             'X' => options[0] = true,  // eXclusively use names in config
             'P' => options[1] = true,  // manually provide Path rather than use one in config
             'I' => options[2] = true,  // Ignore config aliases
+            'F' => options[3] = true,  // Filter by conventional commit (keyword before first :)
             bad => println!("Invalid flag/combination: {}", bad),
         }
     };
@@ -56,6 +57,7 @@ fn main() -> Result<(), Error> {
             Ok(path) => path,
             Err(e) => panic!("Error finding path: {}", e),
         };
+        let mut filters = vec![];
         if options[1] {
             if args.len() == 0 {  // maybe we should panic here so you dont also get repo not
                                      // found error?
@@ -65,6 +67,9 @@ fn main() -> Result<(), Error> {
             } else {
                 println!("Too many arguments");
             }
+        } else if options[3] {
+            // TODO find a way to allow multiple flag arguments maybe like -P path -F filter
+            filters = args;
         }
 
         let repo = match Repository::open(path) {
@@ -94,17 +99,30 @@ fn main() -> Result<(), Error> {
                 Some(name) => name.to_string(),
                 None => "ERROR".to_string(),
             };
+
+            let (data, _msg) = match commit_obj.message(){
+                Some(commit_msg) => match commit_msg.split_once(":") {
+                    Some((data, msg)) => (data, msg),
+                    _ => ("", ""),
+                },
+                None => ("", ""),
+            };
+            
             let mut found = false;
             if !options[2] {
                 for (alias, names) in &config_map {
                     if names.contains(&author_name) || author_name == *alias {
-                        *commit_counter.entry(alias.to_string()).or_insert(0) += 1;
+                        if !options[3] || filters.iter().any(|f| data.contains(f)) {
+                            *commit_counter.entry(alias.to_string()).or_insert(0) += 1;
+                        }
                         found = true;
                     }
                 };
             }
             if !found && !options[0] {  // author_name is not an alias or in the confige
-                *commit_counter.entry(author_name).or_insert(0) += 1;
+                if !options[3] || filters.iter().any(|f| data.contains(f)) {
+                    *commit_counter.entry(author_name).or_insert(0) += 1;
+                }
             }
         }
 
@@ -124,7 +142,6 @@ fn add_alias(names: &mut Vec<String>) -> Result<(), io::Error> {
             let _ = delete_alias(&mut vec![alias.clone()], true)?;
         },
         _ => {}
-
     }
     let mut config_file = OpenOptions::new()
         .append(true)
