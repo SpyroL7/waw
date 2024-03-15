@@ -8,16 +8,14 @@ use std::io::{self, Write, BufReader, BufRead};
 const CONFIG: &str = "config";
 
 // TODO add flag to use [user] instead of config or to autopopulate
-// TODO add ignore names like LTS to config
-// TODO flag that ignores names not in config
 fn process_flags(flags: String, args: &mut Vec<String>) -> Result<(), io::Error> {
     let mut used_args = false;
     for f in flags.chars() {
          match f {
             'r' => reset_config()?,
-            'd' if !used_args => { used_args = true; delete_alias(args)? },
+            'd' if !used_args => { used_args = true; delete_alias(args, false)? },
             'a' if !used_args => { used_args = true; add_alias(args)? },
-            'e' if !used_args => { used_args = true; extend_alias(args)? },
+            // 'e' if !used_args => { used_args = true; extend_alias(args)? },
             'p' if !used_args => { used_args = true; set_path(args)? },
             bad  => println!("Invalid flag/combination: {}", bad),
         };
@@ -117,51 +115,54 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-// TODO: combine add and extend for simplicity
 fn add_alias(names: &mut Vec<String>) -> Result<(), io::Error> {
     let alias = names.remove(0);
     match get_names_with_alias(&alias) {
-        Ok(result) if result.len() > 0 => { println!("An entry for '{}' already exists", alias); Ok(()) },
-        _ => {
-            let mut config_file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(CONFIG)?;
-            config_file.write_all(format!("{}: ", alias).as_bytes())?;
+        Ok(result) if result.len() > 0 => { 
+            // println!("An entry for '{}' already exists", alias); Ok(())
+            *names = vec![result, names.to_vec()].concat();
+            let _ = delete_alias(&mut vec![alias.clone()], true)?;
+        },
+        _ => {}
 
-            let mut it = names.iter().peekable();
-            while let Some(name) = it.next() {
-                if it.peek().is_none() {
-                    config_file.write_all(format!("{}\n", name).as_bytes())?;
-                } else {
-                  config_file.write_all(format!("{}, ", name).as_bytes())?;
-                }
-            }
-            Ok(())
+    }
+    let mut config_file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(CONFIG)?;
+    config_file.write_all(format!("{}: ", alias).as_bytes())?;
+
+    let mut it = names.iter().peekable();
+    while let Some(name) = it.next() {
+         if it.peek().is_none() {
+            config_file.write_all(format!("{}\n", name).as_bytes())?;
+        } else {
+            config_file.write_all(format!("{}, ", name).as_bytes())?;
         }
     }
+    Ok(())
 }
 
 // TODO add function to save repo path in config, another to accept path as argument
 
-fn extend_alias(names: &mut Vec<String>) -> Result<(), io::Error> {
-    let alias = names.remove(0);
-    match get_names_with_alias(&alias) {
-        Ok(result) if result.len() ==  0 => { println!("No alias '{}' found to extend", alias); Ok(()) },
-        _ => {
-            let mut _config_file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(CONFIG)?;
+// fn extend_alias(names: &mut Vec<String>) -> Result<(), io::Error> {
+//     let alias = names.remove(0);
+//     match get_names_with_alias(&alias) {
+//         Ok(result) if result.len() ==  0 => { println!("No alias '{}' found to extend", alias); Ok(()) },
+//         _ => {
+//             let mut _config_file = OpenOptions::new()
+//                 .append(true)
+//                 .create(true)
+//                 .open(CONFIG)?;
+// 
+//     // find line starting with alias, add values to names, remove_alias then add_alias with new
+//     // names
+//             Ok(())
+//         }
+//     }
+// }
 
-    // find line starting with alias, add values to names, remove_alias then add_alias with new
-    // names
-            Ok(())
-        }
-    }
-}
-
-fn delete_alias(aliases: &mut Vec<String>) -> Result<(), io::Error> {
+fn delete_alias(aliases: &mut Vec<String>, quietly: bool) -> Result<(), io::Error> {
     let config_file = OpenOptions::new()
         .read(true)
         .write(true)
@@ -172,7 +173,9 @@ fn delete_alias(aliases: &mut Vec<String>) -> Result<(), io::Error> {
         .filter(|x| {
             match x.split(':').next() {
                 Some(name) if aliases.contains(&name.to_string()) => {
-                    println!("Deleted entry for '{}'", name);
+                    if !quietly {
+                        println!("Deleted entry for '{}'", name);
+                    }
                     false
                 },
                 _ => true
