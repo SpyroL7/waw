@@ -252,7 +252,7 @@ fn get_path() -> Result<String, io::Error> {
     let config_file = File::open(CONFIG)?;
     let mut lines = BufReader::new(config_file).lines();
     if let Some(Ok(path_line)) = lines.next() {
-        match path_line.split(' ').next() {
+        match path_line.split(' ').nth(1) {
             None => println!("No path found in config file"),
             Some(saved_path) => return Ok(saved_path.to_string()),
         }
@@ -269,21 +269,22 @@ fn set_path(args: &mut Vec<String>) -> Result<(), io::Error> {
             // check if path exists, if so delete it
             // write new path to top starting with # 
 
-            let path = format!("# {}", args[0]);
+            let path = format!("# {}\n", args[0]);
             let config_file = OpenOptions::new()
                 .read(true)
                 .write(true)
+                .create(true)
                 .open(CONFIG)?;
 
             let mut lines = BufReader::new(config_file).lines();
             if let Some(Ok(path_line)) = lines.next() {
                 if path_line.starts_with("# ") {
-                    let to_write = lines.skip(1)
+                    let to_write = lines
                         .map(|x| x.unwrap())
                         .collect::<Vec<String>>().join("\n");
 
-                    fs::write(CONFIG, path)?;
-                    fs::write(CONFIG, to_write)?;
+                    fs::write(CONFIG, path + &to_write)?;
+                    // fs::write(CONFIG, to_write)?;
                 }
             } else {
                 fs::write(CONFIG, path)?;
