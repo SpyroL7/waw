@@ -24,7 +24,7 @@ fn process_flags(flags: String, args: &mut Vec<String>) -> Result<(), io::Error>
     Ok(())
 }
 
-fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Vec<bool>, path: &mut String, filters: &mut Vec<String>, exclude: &mut Vec<String>) -> () {
+fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Vec<bool>, path: &mut String, filters: &mut Vec<String>, ci_filters: &mut Vec<String>, exclude: &mut Vec<String>) -> () {
     let mut used_args = false;
     for f in flags.chars() {
         match f {
@@ -46,17 +46,17 @@ fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Vec<bo
             'F' if !used_args => {  // Filter by conventional commit (keyword before first :)
                 used_args = true; 
                 options[3] = true;
-                *filters = new_args.clone();
+                filters.append(&mut new_args.clone());
             },
             'C' if !used_args => {  // Case insensitive filter
                 used_args = true; 
                 options[4] = true;
-                *filters = new_args.clone();
+                ci_filters.append(&mut new_args.clone());
             },
             'E' if !used_args => {  // Exclude name/alias
                 used_args = true; 
                 options[6] = true;
-                *exclude = new_args.clone();
+                exclude.append(&mut new_args.clone());
             },
             bad => panic!("Invalid option/combination: {}", bad),
         }
@@ -76,6 +76,7 @@ fn main() -> Result<(), Error> {
     };
 
     let mut filters = vec![];
+    let mut ci_filters = vec![];
     let mut exclude = vec![];
     let mut first = true;
     let mut flags = String::new();
@@ -96,7 +97,7 @@ fn main() -> Result<(), Error> {
                 new_args.push(arg.to_string());
             } else {
                 if !first {
-                    enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut exclude);
+                    enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut ci_filters, &mut exclude);
                     new_args = vec![];
                 } else {
                     first = false;
@@ -105,7 +106,7 @@ fn main() -> Result<(), Error> {
             }
         }
         if !first {
-            enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut exclude);
+            enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut ci_filters, &mut exclude);
         }
 
         let repo = match Repository::open(path) {
@@ -148,7 +149,7 @@ fn main() -> Result<(), Error> {
             
             let mut found = false;
             let filtered = !options[3] || filters.iter().any(|f| data.contains(f));
-            let case_insensitive = !options[4] || filters.iter().any(|f| data.to_lowercase().contains(&f.to_lowercase()));
+            let case_insensitive = !options[4] || ci_filters.iter().any(|f| data.to_lowercase().contains(&f.to_lowercase()));
 
             if options[5] {
                 if let Some(captures) = regex.captures(data) {
@@ -156,7 +157,7 @@ fn main() -> Result<(), Error> {
                         if let Some(author) = cap {
                             let author_s = author.as_str().to_string();
                             let excluded = !options[6] || !exclude.contains(&author_s);
-                            if (filtered || case_insensitive) && excluded {
+                            if (filtered && case_insensitive) && excluded {
                                 *commit_counter.entry(author_s).or_insert(0) += 1;
                             }
                         }
