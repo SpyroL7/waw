@@ -24,17 +24,41 @@ fn process_flags(flags: String, args: &mut Vec<String>) -> Result<(), io::Error>
     Ok(())
 }
 
-fn enable_options(flags: String, options: &mut Vec<bool>) -> () {
+fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Vec<bool>, path: &mut String, filters: &mut Vec<String>, exclude: &mut Vec<String>) -> () {
+    let mut used_args = false;
     for f in flags.chars() {
         match f {
             'X' => options[0] = true,  // eXclusively use names in config (can't be ysed with I)
-            'P' => options[1] = true,  // manually provide Path rather than use one in config
             'I' => options[2] = true,  // Ignore config aliases (can't be used with X)
-            'F' => options[3] = true,  // Filter by conventional commit (keyword before first :)
-            'C' => options[4] = true,  // makes filter Case insensitive (requires F)
             'A' => options[5] = true,  // use Autopopulated config
-            'E' => options[6] = true,  // Exclude name/alias
-            bad => println!("Invalid flag/combination: {}", bad),
+
+            'P' if !used_args => {  // manually provide Path rather than use one in config
+                used_args = true; 
+                options[1] = true;
+                if new_args.len() == 0 {  // maybe we should panic here so it doesn't just use saved one
+                    println!("No path argument provided");
+                } else if new_args.len() == 1 {
+                    *path = new_args.pop().unwrap();
+                } else {
+                    println!("Too many arguments");
+                }
+            },
+            'F' if !used_args => {  // Filter by conventional commit (keyword before first :)
+                used_args = true; 
+                options[3] = true;
+                *filters = new_args.clone();
+            },
+            'C' if !used_args => {  // Case insensitive filter
+                used_args = true; 
+                options[4] = true;
+                *filters = new_args.clone();
+            },
+            'E' if !used_args => {  // Exclude name/alias
+                used_args = true; 
+                options[6] = true;
+                *exclude = new_args.clone();
+            },
+            bad => panic!("Invalid option/combination: {}", bad),
         }
     };
 }
@@ -46,6 +70,16 @@ fn main() -> Result<(), Error> {
     let mut args: Vec<String> = env::args().skip(1).collect();  // skips the first redundant
                                                                 // argument 
 
+    let mut path = match get_path() {
+        Ok(path) => path,
+        Err(e) => panic!("Error finding path: {}", e),
+    };
+
+    let mut filters = vec![];
+    let mut exclude = vec![];
+    let mut first = true;
+    let mut flags = String::new();
+
     if args.len() > 0 && args[0].starts_with("-c") {
         let flags = args.remove(0);
         match process_flags(String::from(&flags[2..]), &mut args) {
@@ -54,30 +88,24 @@ fn main() -> Result<(), Error> {
         };
     } else {
         // TODO put this is a 'display stats' function
-        if args.len() > 0 && args[0].starts_with("-") {
-            let flags = args.remove(0);
-            enable_options(String::from(&flags[1..]), &mut options);
-        }
-
-        let mut path = match get_path() {
-            Ok(path) => path,
-            Err(e) => panic!("Error finding path: {}", e),
-        };
-        let mut filters = vec![];
-        let mut exclude = vec![];
-        if options[1] {
-            if args.len() == 0 {  // maybe we should panic here so it doesn't just use saved one
-                println!("No path argument provided");
-            } else if args.len() == 1 {
-                path = args.pop().unwrap();
+        //let flags = args.remove(0);
+        let mut new_args = vec![];
+        // enable_options(String::from(&flags[1..]), &mut options);
+        for arg in &args {
+            if !arg.starts_with("-") {
+                new_args.push(arg.to_string());
             } else {
-                println!("Too many arguments");
+                if !first {
+                    enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut exclude);
+                    new_args = vec![];
+                } else {
+                    first = false;
+                }
+                flags = String::from(&arg[1..]);
             }
-        } else if options[3] || options[4] {
-            // TODO find a way to allow multiple flag arguments maybe like -P path -F filter
-            filters = args;
-        } else if options[6] {
-            exclude = args;
+        }
+        if !first {
+            enable_options(flags, new_args, &mut options, &mut path, &mut filters, &mut exclude);
         }
 
         let repo = match Repository::open(path) {
