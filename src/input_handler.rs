@@ -61,7 +61,7 @@ pub fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Ve
                 arg_vector.get_mut(CI_SEARCH).unwrap().append(&mut new_args.clone());
             },
             'B' if !used_args => {  // filter by specific Branches
-                used_args = true;   // this is actually really hard so maybe not
+                used_args = true;   // this is actually really hard so maybe not (TODO maybe fix)
                 options[8] = true;
                 arg_vector.get_mut(BRANCHES).unwrap().append(&mut new_args.clone());
             },
@@ -82,9 +82,6 @@ pub fn enable_options(flags: String, mut new_args: Vec<String>, options: &mut Ve
                     *time_seconds = new_args[0].parse::<i64>().expect("Failed to parse string to int") * units
                 }
             },
-
-            // TODO add 'S' search which is like filter but for the commit message rather than the 'data', make filter case insensitive by default and make C and ci version of search
-            // TODO add 'B' to select a certain branch you want to filter commits for
             bad => panic!("Invalid option/combination: {}", bad),
         }
     };

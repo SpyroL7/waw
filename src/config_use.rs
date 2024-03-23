@@ -68,8 +68,9 @@ pub fn reset_config() -> Result<(), io::Error> {
     Ok(())
 }
 
+// turns config names/aliases into usable map
 pub fn get_map() -> Result<HashMap<String, Vec<String>>, io::Error> { 
-    let config_file = OpenOptions::new()  // turns config into usable map
+    let config_file = OpenOptions::new()
         .read(true)
         .write(true)
         .create(true)
