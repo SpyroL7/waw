@@ -12,6 +12,7 @@ use std::env;
 use regex::Regex;
 use chrono::Local;
 
+// TODO: 'error finding path' when called from anywhere outside group-stats directory
 
 // TODO pivot to interactive tool with a prompt similar to gdb which continuously reads commands so you 
 // can change the new config continuously, which would also include the stats you want displayed, and an
@@ -177,13 +178,13 @@ fn print_results(commit_counter: HashMap<String, (usize, usize, usize, Vec<usize
     // TODO only display stats user asks for, add more things
     println!("{:-<115}", "");
     println!( // {arg_no: <char_width}
-        "{0: <10} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}",
+        "{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}",
         "author", "commits", "lines added", "lines deleted", "lines modified per commit", "median lines modified"
     );
     println!("{:-<115}", "");
     for (name, (commits, ins, dels, mut lines)) in commit_counter {
         lines.sort();
         let median = lines[lines.len()/2];  // probably not efficient to store all these but what can you do
-        println!("{0: <10} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", name, commits, ins, dels, (ins+dels)/commits, median);
+        println!("{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", name, commits, ins, dels, (ins+dels)/commits, median);
     }
 }
