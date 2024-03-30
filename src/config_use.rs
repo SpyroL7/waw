@@ -159,7 +159,7 @@ pub fn set_path(args: &mut Vec<String>) -> Result<(), io::Error> {
                     Ok(dir) => dir,
                     Err(e) => panic!("Error: Unable to get current directory: {}", e),
                 };
-                path_arg = current_dir.into_os_string().into_string().unwrap() + &path_arg;
+                path_arg = current_dir.into_os_string().into_string().unwrap() + "/" + &path_arg;
             }
             let path = format!("# {}\n", path_arg);
             let config_file = OpenOptions::new()

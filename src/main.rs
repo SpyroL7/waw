@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::env;
 use regex::Regex;
 use chrono::Local;
+use colored::Colorize;
 
 // TODO: 'error finding path' when called from anywhere outside group-stats directory
 
@@ -172,19 +173,60 @@ fn main() -> Result<(), Error> {
 }
 
 // function to print all the stats I decided you might want in a nice table
-fn print_results(commit_counter: HashMap<String, (usize, usize, usize, Vec<usize>)>) {
+fn print_results(mut commit_counter: HashMap<String, (usize, usize, usize, Vec<usize>)>) {
     // TODO print what filters and such have been used
     // println!("Commits by each user (using/not using config with/without filters, exclusions, searches etc.): \n");
     // TODO only display stats user asks for, add more things
-    println!("{:-<115}", "");
+    let mut all_data: [Vec<usize>; 5] = Default::default();
+
+    let spacing = vec![10, 15, 15, 25, 20];
+
+    println!("{:-<121}", "");
     println!( // {arg_no: <char_width}
-        "{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}",
-        "author", "commits", "lines added", "lines deleted", "lines modified per commit", "median lines modified"
+        "{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}",  // TODO replace magic numbers with spacing[n]
+        "author".yellow(), "commits".yellow(), "lines added".yellow(), "lines deleted".yellow(), "lines modified per commit".yellow(), "median lines modified".yellow()
     );
-    println!("{:-<115}", "");
-    for (name, (commits, ins, dels, mut lines)) in commit_counter {
+    println!("{:-<121}", "");
+    for (_, data) in &mut commit_counter {
+        let (commits, ins, dels, ref mut lines) = data;
+
+        all_data[0].push(*commits);
+        all_data[1].push(*ins);
+        all_data[2].push(*dels);
+        all_data[3].push((*ins + *dels) / *commits);
+
         lines.sort();
         let median = lines[lines.len()/2];  // probably not efficient to store all these but what can you do
-        println!("{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", name, commits, ins, dels, (ins+dels)/commits, median);
+        all_data[4].push(median);
+    }
+
+    let mut string_data: Vec<Vec<String>> = all_data
+    .iter()
+    .map(|x| x
+        .iter()
+        .map(|y| y.to_string())
+        .collect()
+    )
+    .collect();
+
+    // let mut pit = all_data.iter().zip(&string_data).peekable();
+    // while let Some((data_vec, string_vec)) = pit.next() {
+    for i in 0..(all_data.len()) {
+        for (count, (name, _)) in commit_counter.iter().enumerate() {
+            // if data_vec[count] == *data_vec.iter().max().unwrap() {
+            if all_data[i][count] == *all_data[i].iter().max().unwrap() {
+                // string_vec[count] = string_vec[count].green().to_string() + &" ".repeat(10 -  string_vec[count].len())
+                string_data[i][count] = string_data[i][count].green().to_string() + &" ".repeat(spacing[i] -  string_data[i][count].len())
+            // } else if data_vec[count] == *data_vec.iter().min().unwrap() {
+            } else if all_data[i][count] == *all_data[i].iter().min().unwrap() {
+                // string_vec[count] = string_vec[count].red().to_string() + &" ".repeat(10 -  string_vec[count].len())
+                string_data[i][count] = string_data[i][count].red().to_string() + &" ".repeat(spacing[i] -  string_data[i][count].len())
+            }
+            // if pit.peek().is_none() {
+                if i == all_data.len() - 1 {
+                println!("{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", 
+                    name, string_data[0][count], string_data[1][count], string_data[2][count], string_data[3][count], string_data[4][count]);
+            }
+        }
     }
 }
