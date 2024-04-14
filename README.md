@@ -1,6 +1,11 @@
 # Who's Actually Working
 A program to tell you if your collaborators suck or not
 
+### Installation
+- Clone the repository (eg. with `git clone https://github.com/SpyroL7/waw.git`)
+- Go into the project directory (`cd waw`)
+- Run `cargo install --path .`
+
 There are two modes you can run the tool in:
 ### 1. Config Editing Mode
 This mode is enabled by providing a set of flags beginning with '-c' as the first argument. All flags in this mode are lowercase.
