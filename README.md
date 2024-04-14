@@ -1,11 +1,11 @@
-# group-stats
+# Who's Actually Working
 A program to tell you if your collaborators suck or not
 
 There are two modes you can run the tool in:
 ### 1. Config Editing Mode
 This mode is enabled by providing a set of flags beginning with '-c' as the first argument. All flags in this mode are lowercase.
 
-(for example: `group-stats -cra arg1 arg2 arg3` will run the (r)eset function, and then the (a)dd function with the arguments `arg1`, `arg2` and `arg3`)
+(for example: `waw -cra arg1 arg2 arg3` will run the (r)eset function, and then the (a)dd function with the arguments `arg1`, `arg2` and `arg3`)
 #### Flags:
 - `-a arg1 ... argn`: (a)dds an entry to the config which states when the authors 'args 1-n' appear, group them together under arg1 (arg1 is know as the **alias** of the other names). If the alias arg1 is already in the config, args 2-n are appended to the existing names.
 - `-d arg1 ... argn`: (d)eletes the entries in the config file where args 1-n are the aliases (it will let you know if a certain alias was not found).
@@ -17,7 +17,7 @@ Note the order of the arguments is preserved, so `-ar` will result in an empty c
 ### 2. Display Stats Mode
 This is the default mode and can be run with no arguments, or will a series of uppercase flags and arguments. Flags which require arguments can be chained.
 
-(for example: `group-stats -AF feat fix -E bob bill` will use (A)utogenerated aliases, (F)ilter out commits that are not 'feats' or 'fixes' and excludes commits by bob and bill)
+(for example: `waw -AF feat fix -E bob bill` will use (A)utogenerated aliases, (F)ilter out commits that are not 'feats' or 'fixes' and excludes commits by bob and bill)
 #### Flags:
 - `-I`: (I)gnores aliases in the config.
 - `-P arg`: ignores (P)ath in config, uses arg as repo path instead.
