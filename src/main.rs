@@ -172,14 +172,15 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-// function to print all the stats I decided you might want in a nice table
+// function to print all the stats that I decided you might want in a nice, formatted, coloured table
 fn print_results(mut commit_counter: HashMap<String, (usize, usize, usize, Vec<usize>)>) {
     // TODO print what filters and such have been used
     // println!("Commits by each user (using/not using config with/without filters, exclusions, searches etc.): \n");
     // TODO only display stats user asks for, add more things
     let mut all_data: [Vec<usize>; 5] = Default::default();
 
-    let spacing = vec![10, 15, 15, 25, 20];
+    // how much space is allocated for each column
+    let spacing = vec![20, 10, 15, 15, 25, 20];
 
     println!("{:-<121}", "");
     println!( // {arg_no: <char_width}
@@ -200,6 +201,9 @@ fn print_results(mut commit_counter: HashMap<String, (usize, usize, usize, Vec<u
         all_data[4].push(median);
     }
 
+    // this next bit colours the data green or red if it is the max/min by storing what we are going
+    // to print for each bit of data in a vec of Vec<String> - either we store the original value 
+    // converted to a string, or that string but coloured if it is a max/min. not the best but does the trick
     let mut string_data: Vec<Vec<String>> = all_data
     .iter()
     .map(|x| x
@@ -209,24 +213,25 @@ fn print_results(mut commit_counter: HashMap<String, (usize, usize, usize, Vec<u
     )
     .collect();
 
-    // let mut pit = all_data.iter().zip(&string_data).peekable();
-    // while let Some((data_vec, string_vec)) = pit.next() {
+    // this isn't great - maxima and minima could possibly be tracked and updated in the
+    // original pass of the data (in the revwalk) rather than making a second pass
+    // (though this would result in fewer checks and changes to the max/mins...)
     for i in 0..(all_data.len()) {
-        for (count, (name, _)) in commit_counter.iter().enumerate() {
-            // if data_vec[count] == *data_vec.iter().max().unwrap() {
-            if all_data[i][count] == *all_data[i].iter().max().unwrap() {
-                // string_vec[count] = string_vec[count].green().to_string() + &" ".repeat(10 -  string_vec[count].len())
-                string_data[i][count] = string_data[i][count].green().to_string() + &" ".repeat(spacing[i] -  string_data[i][count].len())
-            // } else if data_vec[count] == *data_vec.iter().min().unwrap() {
-            } else if all_data[i][count] == *all_data[i].iter().min().unwrap() {
-                // string_vec[count] = string_vec[count].red().to_string() + &" ".repeat(10 -  string_vec[count].len())
-                string_data[i][count] = string_data[i][count].red().to_string() + &" ".repeat(spacing[i] -  string_data[i][count].len())
+        if all_data[i].len() > 0 {
+            let min = *all_data[i].iter().min().unwrap();
+            let max = *all_data[i].iter().max().unwrap();
+            
+            for (count, (name, _)) in commit_counter.iter().enumerate() {
+                if all_data[i][count] == max {                            // i+1 to skip author column
+                    string_data[i][count] = string_data[i][count].green().to_string() + &" ".repeat(spacing[i+1] -  string_data[i][count].len())
+                } else if all_data[i][count] == min {  // add repeated spaces here because colouring screws up column formatting (so we do it manually)
+                    string_data[i][count] = string_data[i][count].red().to_string() + &" ".repeat(spacing[i+1] -  string_data[i][count].len())
+                }
+                    if i == all_data.len() - 1 {  // after processing the final entry, we will have our max/min and therefore can print the data
+                    println!("{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", 
+                        name, string_data[0][count], string_data[1][count], string_data[2][count], string_data[3][count], string_data[4][count]);
+                }
             }
-            // if pit.peek().is_none() {
-                if i == all_data.len() - 1 {
-                println!("{0: <20} | {1: <10} | {2: <15} | {3: <15} | {4: <25} | {5: <20}", 
-                    name, string_data[0][count], string_data[1][count], string_data[2][count], string_data[3][count], string_data[4][count]);
-            }
-        }
+    }
     }
 }
